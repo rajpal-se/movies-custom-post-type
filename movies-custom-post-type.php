@@ -201,3 +201,90 @@ add_filter('parse_query', function($query){
         $query->query_vars['meta_value'] = $author_id;
     }
 });
+
+
+/* 
+ * Register Custom Taxonomy (movies_category)
+ * */
+add_action('init', function(){
+    $labels = array(
+        'name'              => __( 'Movies Category'),
+        'singular_name'     => __( 'Movie Category'),
+        'search_items'      => __( 'Search Movies Category'),
+        'all_items'         => __( 'All Movies Category'),
+        'view_item'         => __( 'View Movie Category'),
+        'parent_item'       => __( 'Parent Movie Category'),
+        'parent_item_colon' => __( 'Parent Movie Category:'),
+        'edit_item'         => __( 'Edit Movie Category'),
+        'update_item'       => __( 'Update Movie Category'),
+        'add_new_item'      => __( 'Add New Movie Category'),
+        'new_item_name'     => __( 'New Movie Category Name'),
+        'not_found'         => __( 'No Movies Category Found'),
+        'back_to_items'     => __( 'Back to Movies Category'),
+        'menu_name'         => __( 'Movie Category'),
+    );
+ 
+    $args = array(
+        'labels'            => $labels,
+        'hierarchical'      => true,
+        'rewrite'           => ['slug' => 'movies_category'],
+        'show_in_quick_edit'    => true,
+        'show_in_rest'      => true,    // Show on "post.php?post=<##>&action=edit" page on Left Side
+        'public'            => true,
+        // 'show_admin_column' => true,
+        'query_var'         => 'movies_category_query_var',     // By Default it is: $taxonomy (term-slug)
+    );
+    register_taxonomy('movies_category', 'movie', $args);
+    register_taxonomy_for_object_type('movies_category','movie');
+}, 0);
+
+/* 
+ *  Add filter for Custom taxonamy (movies_category) in List Table (edit.php)
+ * */
+add_action('restrict_manage_posts', function($post_type, $which){
+    if($post_type == 'movie'){
+        $term_id = isset($_GET['movies_category_query_var']) ? intval($_GET['movies_category_query_var']) : 0;
+        wp_dropdown_categories([
+            'show_option_all'  => 'All Movie Categories',
+            'id'                => 'filter_author_id',
+            'name'              => 'movies_category_query_var',
+            // Name must be same as $args["query_var"] value, which is passed in register_taxonomy() function
+            'taxonomy'          => 'movies_category',
+            'show_count'        => true,
+            'selected'          => $term_id
+        ]);
+    }
+}, 10, 2);
+
+add_filter('parse_query', function($query){
+    global $typenow;    // "movie"
+    global $pagenow;    // "edit.php"   // In URL (address) bar
+    if($typenow == 'movie' && $pagenow == 'edit.php'){
+        $query_vars = &$query->query_vars;
+        if(isset($query_vars['movies_category_query_var']) && is_numeric($query_vars['movies_category_query_var'])){
+            if($query_vars['movies_category_query_var'] > 0){
+                // Method: 1
+                // $slug = get_term_field('slug', $query_vars['movies_category_query_var'], 'movies_category');
+                // if(!empty($slug)) $query_vars['movies_category_query_var'] = $slug;
+                
+                /*  Output of   get_term_field()  function
+                /*  If $term_id = 0             // Return WP_Error
+                 *  If $term_id NOT Matched     // Return empty string
+                 *  If $term_id is Matched      // Return SLUG (string) of $term
+                 * */
+
+                
+                // Method 2
+                $term_details = get_term_by('id', $query_vars['movies_category_query_var'], 'movies_category');
+                if($term_details != false) $query_vars['movies_category_query_var'] = $term_details->slug;
+                // echo '<script>console.log('.json_encode($term_details).');</script>';
+                // echo '<script>console.log('.json_encode($query_vars).');</script>';
+
+                /*  Output of   get_term_field()  function
+                 *  If $term_id is Matched      // Return WP_Term
+                 *  If $term_id NOT Matched     // Return false
+                 * */
+            }
+        }
+    }
+});
